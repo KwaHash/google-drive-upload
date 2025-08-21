@@ -50,21 +50,17 @@ export interface UploadSession {
   completedFiles: number;
   totalBytes: number;
   uploadedBytes: number;
-  status: 'idle' | 'uploading' | 'paused' | 'completed' | 'failed';
+  status: 'idle' | 'uploading' | 'paused' | 'completed' | 'failed' | 'resumed';
   createdAt: number;
-  lastUpdated: number;
   sharedDriveId?: string;
-  parentFolderId?: string;
 }
 
 export interface UploadQueueItem {
   id: string;
   file: FileInfo;
   parentId?: string;
-  status: 'pending' | 'uploading' | 'completed' | 'failed' | 'paused';
-  progress: number;
+  status: 'pending' | 'uploading' | 'completed' | 'failed';
   error?: string;
-  uploadedBytes: number;
   totalBytes: number;
   startTime?: number;
   endTime?: number;
@@ -73,19 +69,10 @@ export interface UploadQueueItem {
 export interface UploadStats {
   totalFiles: number;
   completedFiles: number;
-  failedFiles: number;
   totalBytes: number;
   uploadedBytes: number;
   averageSpeed: number;
   estimatedTimeRemaining: number;
-  currentFile?: {
-    name: string;
-    progress: number;
-    uploadedBytes: number;
-    totalBytes: number;
-    speed: number;
-    estimatedTimeRemaining: number;
-  };
   queueProgress: {
     pending: number;
     uploading: number;
