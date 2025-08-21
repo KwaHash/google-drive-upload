@@ -1,62 +1,62 @@
-import "@/styles/globals.scss";
-import { StrictMode } from "react";
-import { GoogleTagManager } from "@next/third-parties/google";
-import HolyLoader from "holy-loader";
-import { type Metadata, type Viewport } from "next";
-import Providers from "./providers";
-import PreloadResources from "@/components/preload-resources";
-import ScrollTopButton from "@/components/scroll-top-button";
-import TailwindIndicator from "@/components/tailwind-indicator";
-import { env } from "@/lib/config";
+import '@/styles/globals.scss'
+import { StrictMode } from 'react'
+import { GoogleTagManager } from '@next/third-parties/google'
+import HolyLoader from 'holy-loader'
+import { type Metadata, type Viewport } from 'next'
+import Providers from './providers'
+import PreloadResources from '@/components/preload-resources'
+import ScrollTopButton from '@/components/scroll-top-button'
+import TailwindIndicator from '@/components/tailwind-indicator'
+import { env } from '@/lib/config'
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#030712" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: '(prefers-color-scheme: dark)', color: '#030712' },
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
   ],
-  colorScheme: "dark light",
-  width: "device-width",
+  colorScheme: 'dark light',
+  width: 'device-width',
   initialScale: 1.0,
-  viewportFit: "cover",
-};
+  viewportFit: 'cover',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_HOST),
-  title: "GoogleDriveアップローダー",
-  applicationName: "GoogleDriveアップローダー",
-  description: "GoogleDriveアップローダー",
+  title: 'GoogleDriveアップローダー',
+  applicationName: 'GoogleDriveアップローダー',
+  description: 'GoogleDriveアップローダー',
   openGraph: {
-    title: "GoogleDriveアップローダー",
-    siteName: "GoogleDriveアップローダー",
-    description: "GoogleDriveアップローダー",
-    type: "website",
-    images: [""],
+    title: 'GoogleDriveアップローダー',
+    siteName: 'GoogleDriveアップローダー',
+    description: 'GoogleDriveアップローダー',
+    type: 'website',
+    images: [''],
   },
   icons: [
     {
-      rel: "icon",
-      url: "/favicon-16x16.png",
-      sizes: "16x16",
-      type: "image/png",
+      rel: 'icon',
+      url: '/favicon-16x16.png',
+      sizes: '16x16',
+      type: 'image/png',
     },
     {
-      rel: "icon",
-      url: "/favicon-32x32.png",
-      sizes: "32x32",
-      type: "image/png",
+      rel: 'icon',
+      url: '/favicon-32x32.png',
+      sizes: '32x32',
+      type: 'image/png',
     },
     {
-      url: "/android-chrome-192x192.png",
-      sizes: "192x192",
-      type: "image/png",
+      url: '/android-chrome-192x192.png',
+      sizes: '192x192',
+      type: 'image/png',
     },
     {
-      url: "/android-chrome-512x512.png",
-      sizes: "512x512",
-      type: "image/png",
+      url: '/android-chrome-512x512.png',
+      sizes: '512x512',
+      type: 'image/png',
     },
   ],
-};
+}
 
 export default function RootLayout({
   children,
@@ -77,8 +77,8 @@ export default function RootLayout({
               <ScrollTopButton />
             </div>
 
-            {env.NEXT_PUBLIC_APP_ENV === "production" ? (
-              <GoogleTagManager gtmId={env.NEXT_PUBLIC_GOOGLE_GTM_ID || ""} />
+            {env.NEXT_PUBLIC_APP_ENV === 'production' ? (
+              <GoogleTagManager gtmId={env.NEXT_PUBLIC_GOOGLE_GTM_ID || ''} />
             ) : (
               <TailwindIndicator />
             )}
@@ -86,5 +86,5 @@ export default function RootLayout({
         </body>
       </html>
     </StrictMode>
-  );
+  )
 }
