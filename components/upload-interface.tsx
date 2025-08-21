@@ -8,9 +8,10 @@ import {
   Play,
   Pause,
   RefreshCw,
+  Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
+  Trash,
   Cloud,
   HardDrive,
 } from 'lucide-react'
@@ -19,7 +20,6 @@ import { toast } from 'react-hot-toast'
 import { type GoogleDriveClientService } from '@/lib/google-drive-client'
 import { type FileInfo, type UploadStats , type GoogleSharedDrive } from '@/lib/types'
 import { type UploadManager } from '@/lib/upload-manager'
-
 
 // TypeScript declarations for File System Access API
 declare global {
@@ -48,18 +48,19 @@ export default function UploadInterface({
 }: UploadInterfaceProps) {
   const [selectedFiles, setSelectedFiles] = useState<FileInfo[]>([])
   const [fileObjects, setFileObjects] = useState<Map<string, File>>(new Map())
-  const [uploadStats, setUploadStats] = useState<UploadStats | null>(null)
-  const [isUploading, setIsUploading] = useState(false)
-
-  const [showAuthDialog, setShowAuthDialog] = useState(false)
   const [isProcessingFolders, setIsProcessingFolders] = useState(false)
+
+  const [uploadStats, setUploadStats] = useState<UploadStats | null>(null)
+  const [showAuthDialog, setShowAuthDialog] = useState(false)
 
   const [sharedDrives, setSharedDrives] = useState<GoogleSharedDrive[]>([])
   const [selectedDrive, setSelectedDrive] = useState<string>('')
   const [isLoadingDrives, setIsLoadingDrives] = useState(false)
 
   useEffect(() => {
-    uploadManager.setProgressCallback(setUploadStats)
+    if (uploadManager) {
+      uploadManager.setProgressCallback(setUploadStats)
+    }
   }, [uploadManager])
 
   useEffect(() => {
@@ -306,35 +307,21 @@ export default function UploadInterface({
   }, [fileObjects])
 
   const handleStartUpload = async () => {
-    try {
-      setIsUploading(true)
-
-      await uploadManager.addFilesWithObjects(
-        selectedFiles,
-        fileObjects,
-        selectedDrive
-      )
-      await uploadManager.startUpload()
-      toast.success('アップロードが完了しました')
-    } catch (error) {
-      console.error('Error starting upload: ', error)
-      toast.error('アップロードを開始できませんでした')
-    } finally {
-      setIsUploading(false)
-    }
+    await uploadManager.addFilesWithObjects(
+      selectedFiles,
+      fileObjects,
+      selectedDrive
+    )
+    await uploadManager.startUpload()
   }
 
   const handleToggleUpload = async () => {
     if (uploadManager.isPaused()) {
-      try {
-        await uploadManager.resumeUpload()
-        toast.success('Upload resumed')
-      } catch (error) {
-        toast.error('Failed to resume upload')
-      }
+      toast.success('アップロードを再開しました')
+      await uploadManager.resumeUpload()
     } else {
+      toast.success('アップロードを一時停止しました')
       uploadManager.pauseUpload()
-      toast.success('Upload paused')
     }
   }
 
@@ -343,7 +330,6 @@ export default function UploadInterface({
     setUploadStats(null)
     setFileObjects(new Map())
     setSelectedFiles([])
-    toast.success('Cache cleared')
   }
 
   const formatBytes = (bytes: number) => {
@@ -370,8 +356,6 @@ export default function UploadInterface({
     if (!uploadStats) return 0
     return (uploadStats.uploadedBytes / uploadStats.totalBytes) * 100
   }
-
-  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -559,43 +543,43 @@ export default function UploadInterface({
                 {selectedDrive && (
                   <p className="text-sm text-green-600 dark:text-green-400">
                     対象ドライブ:{' '}
-                    {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access */}
                     {sharedDrives.find((d) => d.id === selectedDrive)?.name ||
                       '選択したドライブ'}
                   </p>
                 )}
               </div>
               <div className="flex space-x-3">
-                {!isUploading ? (
+                {uploadManager.isCompleted() ? (
                   <button
-                    onClick={handleStartUpload}
-                    disabled={!selectedDrive}
-                    className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    onClick={handleClearCache}
+                    className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
                   >
-                    <Play className="w-4 h-4" />
-                    <span>
-                      {selectedDrive
-                        ? 'アップロード'
-                        : 'ドライブを選択してください'}
-                    </span>
+                    <Trash className="w-4 h-4" />
+                    <span>クリア</span>
                   </button>
                 ) : (
-                  <button
-                    onClick={handleToggleUpload}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-                  >
-                    {uploadManager.isPaused() ? (
-                      <>
-                        <RefreshCw className="w-4 h-4" />
-                        <span>再開</span>
-                      </>
-                    ) : (
-                      <>
-                        <Pause className="w-4 h-4" />
-                        <span>一時停止</span>
-                      </>
-                    )}
-                  </button>
+                  uploadManager.isUploading() || uploadManager.isPaused() ? (
+                    <button
+                      onClick={handleToggleUpload}
+                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <Pause className="w-4 h-4" />
+                      <span>{uploadManager.isPaused() ? '再開' : '一時停止'}</span>
+                    </button> 
+                  ) : (
+                    <button
+                      onClick={handleStartUpload}
+                      disabled={!selectedDrive}
+                      className="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <Play className="w-4 h-4" />
+                      <span>
+                        {selectedDrive
+                          ? 'アップロード'
+                          : 'ドライブを選択してください'}
+                      </span>
+                    </button>
+                  )
                 )}
               </div>
             </div>
@@ -609,36 +593,6 @@ export default function UploadInterface({
               アップロード進捗
             </h3>
 
-            {/* Current File Progress */}
-            {uploadStats.currentFile && (
-              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
-                    現在アップロード中: {uploadStats.currentFile.name}
-                  </h4>
-                  <span className="text-sm text-blue-700 dark:text-blue-300">
-                    {uploadStats.currentFile.progress.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2 mb-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${uploadStats.currentFile.progress}%` }}
-                  />
-                </div>
-                <div className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
-                  <span>
-                    {formatBytes(uploadStats.currentFile.uploadedBytes)} /{' '}
-                    {formatBytes(uploadStats.currentFile.totalBytes)}
-                  </span>
-                  <span>
-                    {formatSpeed(uploadStats.currentFile.speed)} •{' '}
-                    {formatTime(uploadStats.currentFile.estimatedTimeRemaining)}
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* Overall Progress */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-2">
@@ -646,7 +600,7 @@ export default function UploadInterface({
                   全体の進捗
                 </span>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {uploadStats.completedFiles} / {uploadStats.totalFiles} files
+                  {uploadStats.completedFiles} / {uploadStats.totalFiles} ファイル
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
@@ -706,7 +660,7 @@ export default function UploadInterface({
             </div>
 
             {/* Speed and ETA */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <div className="flex items-center space-x-2 mb-2">
                   <HardDrive className="w-5 h-5 text-blue-500" />
@@ -730,18 +684,6 @@ export default function UploadInterface({
                   {formatTime(uploadStats.estimatedTimeRemaining)}
                 </p>
               </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <div className="flex items-center space-x-2 mb-2">
-                  <AlertCircle className="w-5 h-5 text-red-500" />
-                  <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                    失敗したファイル
-                  </span>
-                </div>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {uploadStats.failedFiles}
-                </p>
-              </div>
             </div>
 
             {/* Upload Queue Details */}
@@ -750,7 +692,7 @@ export default function UploadInterface({
                 アップロードキュー詳細
               </h4>
               <div className="max-h-64 overflow-y-auto space-y-2">
-                {uploadManager.getQueue().map((item, index) => (
+                {uploadManager.getQueue().map((item) => (
                   <div
                     key={item.id}
                     className={`p-3 rounded-lg border ${
@@ -782,23 +724,6 @@ export default function UploadInterface({
                         {formatBytes(item.totalBytes)}
                       </div>
                     </div>
-                    {item.status === 'uploading' && (
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                          <span>{item.progress.toFixed(1)}%</span>
-                          <span>
-                            {formatBytes(item.uploadedBytes)} /{' '}
-                            {formatBytes(item.totalBytes)}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
-                          <div
-                            className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                            style={{ width: `${item.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
                     {item.status === 'failed' && item.error && (
                       <div className="mt-2 text-xs text-red-600 dark:text-red-400">
                         エラー: {item.error}
@@ -844,20 +769,3 @@ export default function UploadInterface({
     </div>
   )
 }
-
-// Missing Clock component - let's add it
-const Clock = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-    />
-  </svg>
-)
