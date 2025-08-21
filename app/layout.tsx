@@ -1,13 +1,10 @@
 import '@/styles/globals.scss'
 import { StrictMode } from 'react'
-import { GoogleTagManager } from '@next/third-parties/google'
 import HolyLoader from 'holy-loader'
 import { type Metadata, type Viewport } from 'next'
 import Providers from './providers'
-import PreloadResources from '@/components/preload-resources'
 import ScrollTopButton from '@/components/scroll-top-button'
 import TailwindIndicator from '@/components/tailwind-indicator'
-import { env } from '@/lib/config'
 
 export const viewport: Viewport = {
   themeColor: [
@@ -21,7 +18,6 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXT_PUBLIC_HOST),
   title: 'GoogleDriveアップローダー',
   applicationName: 'GoogleDriveアップローダー',
   description: 'GoogleDriveアップローダー',
@@ -65,7 +61,6 @@ export default function RootLayout({
 }>) {
   return (
     <StrictMode>
-      <PreloadResources />
       <html lang="jp" suppressHydrationWarning>
         <body>
           <HolyLoader color="#9333ea" height="1px" easing="linear" />
@@ -76,12 +71,7 @@ export default function RootLayout({
               </main>
               <ScrollTopButton />
             </div>
-
-            {env.NEXT_PUBLIC_APP_ENV === 'production' ? (
-              <GoogleTagManager gtmId={env.NEXT_PUBLIC_GOOGLE_GTM_ID || ''} />
-            ) : (
-              <TailwindIndicator />
-            )}
+            <TailwindIndicator />
           </Providers>
         </body>
       </html>
