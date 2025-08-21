@@ -1,5 +1,5 @@
-import { type PropsWithChildren } from "react";
-import { ThemeProvider } from "@/providers/theme-provider";
+import { type PropsWithChildren } from 'react'
+import { ThemeProvider } from '@/providers/theme-provider'
 
 export default function Providers({ children }: PropsWithChildren) {
   return (
@@ -11,5 +11,5 @@ export default function Providers({ children }: PropsWithChildren) {
     >
       {children}
     </ThemeProvider>
-  );
+  )
 }

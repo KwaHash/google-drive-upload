@@ -1,5 +1,5 @@
-import React from "react";
-import { ThreeDot } from "react-loading-indicators";
+import React from 'react'
+import { ThreeDot } from 'react-loading-indicators'
 
 const Loading = () => {
   return (
@@ -11,7 +11,7 @@ const Loading = () => {
         <ThreeDot variant="bounce" color="#2563EB" size="large" />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Loading;
+export default Loading
