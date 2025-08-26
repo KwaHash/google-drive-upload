@@ -177,7 +177,7 @@ export class UploadManager {
     )
 
     // Process items in parallel (3 at a time for optimal speed)
-    const maxConcurrent = 3
+    const maxConcurrent = 1
     const chunks = this.chunkArray(pendingItems, maxConcurrent)
     
     for (const chunk of chunks) {
