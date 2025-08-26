@@ -1,5 +1,4 @@
 import { type GoogleDriveClientService } from './google-drive-client'
-import { StorageManager } from './storage'
 import {
   type FileInfo,
   type UploadSession,
@@ -17,7 +16,6 @@ export class UploadManager {
 
   constructor(driveService: GoogleDriveClientService) {
     this.driveService = driveService
-    this.loadFromCache()
   }
 
   /* Get upload queue */
@@ -183,6 +181,7 @@ export class UploadManager {
 
     item.status = 'uploading'
     item.startTime = Date.now()
+    this.updateProgress()
 
     try {
       if (item.file.isDirectory) {
@@ -230,6 +229,8 @@ export class UploadManager {
       failed: this.queue.filter((item) => item.status === 'failed').length,
     }
 
+    const currentFile = this.queue.find((item) => item.status === 'uploading')
+
     const stats: UploadStats = {
       totalFiles: this.currentSession.totalFiles,
       completedFiles: this.currentSession.completedFiles,
@@ -237,6 +238,10 @@ export class UploadManager {
       uploadedBytes: this.currentSession.uploadedBytes,
       averageSpeed: this.calculateAverageSpeed(),
       estimatedTimeRemaining: this.calculateEstimatedTimeRemaining(),
+      currentFile: currentFile ? {
+        name: currentFile.file.name,
+        totalBytes: currentFile.totalBytes,
+      } : undefined,
       queueProgress,
     }
 
@@ -310,70 +315,9 @@ export class UploadManager {
     return remainingBytes / averageSpeed // seconds
   }
 
-  /* Calculate current file upload speed */
-  private calculateCurrentFileSpeed(item: UploadQueueItem): number {
-    if (!item.startTime) return 0
-
-    const elapsedTime = (Date.now() - item.startTime) / 1000 // seconds
-    if (elapsedTime === 0) return 0
-
-    return item.totalBytes / elapsedTime // bytes per second
-  }
-
-
-  /* Save to cache */
-  private saveToCache(): void {
-    if (!this.currentSession) return
-
-    try {
-      StorageManager.setUploadSession(this.currentSession)
-      StorageManager.setUploadQueue(this.queue)
-    } catch (error) {
-      console.error('Error saving to cache:', error)
-    }
-  }
-
-  /* Load from cache */
-  private loadFromCache(): void {
-    const session = StorageManager.getUploadSession()
-    const queue = StorageManager.getUploadQueue()
-
-    if (session) {
-      this.currentSession = session
-      this.queue = queue
-    }
-  }
-
   /* Clear cache */
   clearCache(): void {
-    StorageManager.clearUploadData()
     this.currentSession = null
     this.queue = []
-  }
-
-  /* Get current upload status */
-  getUploadStatus(): {
-    currentFile?: UploadQueueItem;
-    queueProgress: {
-      pending: number;
-      uploading: number;
-      completed: number;
-      failed: number;
-    };
-  } {
-    const currentFile = this.queue.find((item) => item.status === 'uploading')
-    const queueProgress = {
-      pending: this.queue.filter((item) => item.status === 'pending').length,
-      uploading: this.queue.filter((item) => item.status === 'uploading')
-        .length,
-      completed: this.queue.filter((item) => item.status === 'completed')
-        .length,
-      failed: this.queue.filter((item) => item.status === 'failed').length,
-    }
-
-    return {
-      currentFile,
-      queueProgress,
-    }
   }
 }

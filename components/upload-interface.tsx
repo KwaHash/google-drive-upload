@@ -593,6 +593,30 @@ export default function UploadInterface({
               アップロード進捗
             </h3>
 
+            {/* Upload Queue Details */}
+            <div className="mb-6">
+              {uploadStats.currentFile && (
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">現在アップロード中</h4>
+                  <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {uploadStats.currentFile.name}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {formatBytes(uploadStats.currentFile.totalBytes)}
+                          </div>
+                        </div>
+                      </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Overall Progress */}
             <div className="mb-6">
               <div className="flex justify-between items-center mb-2">
@@ -683,54 +707,6 @@ export default function UploadInterface({
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
                   {formatTime(uploadStats.estimatedTimeRemaining)}
                 </p>
-              </div>
-            </div>
-
-            {/* Upload Queue Details */}
-            <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
-                アップロードキュー詳細
-              </h4>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {uploadManager.getQueue().map((item) => (
-                  <div
-                    key={item.id}
-                    className={`p-3 rounded-lg border ${
-                      item.status === 'uploading'
-                        ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
-                        : item.status === 'completed'
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                        : item.status === 'failed'
-                        ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        {item.status === 'uploading' ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                        ) : item.status === 'completed' ? (
-                          <CheckCircle className="w-4 h-4 text-green-500" />
-                        ) : item.status === 'failed' ? (
-                          <XCircle className="w-4 h-4 text-red-500" />
-                        ) : (
-                          <div className="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
-                        )}
-                        <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {item.file.name}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatBytes(item.totalBytes)}
-                      </div>
-                    </div>
-                    {item.status === 'failed' && item.error && (
-                      <div className="mt-2 text-xs text-red-600 dark:text-red-400">
-                        エラー: {item.error}
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           </div>

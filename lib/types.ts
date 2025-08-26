@@ -73,6 +73,10 @@ export interface UploadStats {
   uploadedBytes: number;
   averageSpeed: number;
   estimatedTimeRemaining: number;
+  currentFile?: {
+    name: string;
+    totalBytes: number;
+  };
   queueProgress: {
     pending: number;
     uploading: number;
