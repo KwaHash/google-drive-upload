@@ -185,11 +185,8 @@ export class UploadManager {
       if (status !== 'uploading' && status !== 'resumed') break
       
       // Upload multiple files simultaneously
-      const startTime = Date.now()
       const uploadPromises = chunk.map(item => this.uploadItem(item))
       await Promise.allSettled(uploadPromises)
-      this.totalUploadTime += Date.now() - startTime
-      this.updateProgress()
     }
 
     if (this.currentSession.completedFiles === this.currentSession.totalFiles) {
@@ -236,9 +233,11 @@ export class UploadManager {
         if (!file) {
           throw new Error(`File not found: ${item.file.name}`)
         }
+        const startTime = Date.now()
         await this.uploadFileWithProgress(file, item)
         item.status = 'completed'
 
+        this.totalUploadTime += Date.now() - startTime
         this.currentFile = null
         this.queueProgress.uploading--
         this.queueProgress.completed++
