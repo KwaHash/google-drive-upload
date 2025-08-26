@@ -31,27 +31,13 @@ export interface FileInfo {
   children?: FileInfo[];
 }
 
-export interface UploadProgress {
-  fileId: string;
-  fileName: string;
-  progress: number;
-  status: 'pending' | 'uploading' | 'completed' | 'failed' | 'paused';
-  error?: string;
-  uploadedBytes: number;
-  totalBytes: number;
-  startTime: number;
-  estimatedTimeRemaining?: number;
-}
-
 export interface UploadSession {
   id: string;
-  files: UploadProgress[];
   totalFiles: number;
   completedFiles: number;
   totalBytes: number;
   uploadedBytes: number;
   status: 'idle' | 'uploading' | 'paused' | 'completed' | 'failed' | 'resumed';
-  createdAt: number;
   sharedDriveId?: string;
 }
 
