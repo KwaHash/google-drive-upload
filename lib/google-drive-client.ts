@@ -22,6 +22,8 @@ class GoogleDriveClientService {
   /* Validate and refresh token if needed */
   async validateToken(): Promise<boolean> {
     if (!this.accessToken) return false
+    const refreshToken = StorageManager.getRefreshToken()
+    if (refreshToken) return await this.refreshAccessToken(refreshToken)
 
     try {
       const { status } = await axios.get('/api/drives', {
@@ -31,9 +33,6 @@ class GoogleDriveClientService {
       })
       if (status === 200) return true
       if (status === 401 || status === 403) this.clearAuth()
-
-      const refreshToken = StorageManager.getRefreshToken()
-      if (refreshToken) return await this.refreshAccessToken(refreshToken)
 
       return false
     } catch (error) {
@@ -57,6 +56,7 @@ class GoogleDriveClientService {
       this.setAccessToken(tokens.access_token)
       StorageManager.setAccessToken(tokens.access_token)
       StorageManager.setRefreshToken(tokens.refresh_token || '')
+      StorageManager.setTokenExpiry(tokens.expiry_date || 0)
 
       return true
     } catch (error) {
@@ -77,6 +77,7 @@ class GoogleDriveClientService {
     this.setAccessToken(tokens.access_token)
     StorageManager.setAccessToken(tokens.access_token)
     StorageManager.setRefreshToken(tokens.refresh_token || '')
+    StorageManager.setTokenExpiry(tokens.expiry_date || 0)
 
     return tokens
   }
@@ -95,9 +96,8 @@ class GoogleDriveClientService {
     drives: GoogleSharedDrive[];
     status: number;
   }> {
-    const isValid = await this.validateToken()
-    if (!isValid) {
-      throw new Error('有効なアクセストークンがありません')
+    if (StorageManager.isTokenExpired()) {
+      await this.refreshAccessToken(StorageManager.getRefreshToken() || '')
     }
 
     const {
@@ -121,6 +121,10 @@ class GoogleDriveClientService {
     parentId?: string,
     sharedDriveId?: string
   ): Promise<string> {
+    if (StorageManager.isTokenExpired()) {
+      await this.refreshAccessToken(StorageManager.getRefreshToken() || '')
+    }
+
     const { data: { folderId }, status } = await axios.post<{ folderId: string }>('/api/folders', {
       name,
       parentId,
@@ -142,6 +146,10 @@ class GoogleDriveClientService {
     sharedDriveId?: string,
     onProgress?: (progress: number) => void
   ): Promise<string> {
+    if (StorageManager.isTokenExpired()) {
+      await this.refreshAccessToken(StorageManager.getRefreshToken() || '')
+    }
+
     const formData = new FormData()
     formData.append('file', file)
     if (parentId) formData.append('parentId', parentId)
