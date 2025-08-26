@@ -171,10 +171,10 @@ export class UploadManager {
   /* Process upload queue */
   private async processQueue(): Promise<void> {
     if (!this.currentSession) return
-    const { status } = this.currentSession
-    if (status !== 'uploading' && status !== 'resumed') return
 
     for (const item of this.queue) {
+      const { status } = this.currentSession
+      if (status !== 'uploading' && status !== 'resumed') break
       if (item.status === 'completed') continue
       if (item.status === 'pending' || item.status === 'failed') {
         await this.uploadItem(item)
