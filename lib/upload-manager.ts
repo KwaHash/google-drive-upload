@@ -14,6 +14,15 @@ export class UploadManager {
   private currentSession: UploadSession | null = null
   private onProgress?: (stats: UploadStats) => void
 
+  private queueProgress: {
+    pending: number
+    uploading: number
+    completed: number
+    failed: number
+  } = { pending: 0, uploading: 0, completed: 0, failed: 0 }
+  private currentFile: UploadQueueItem | null = null
+  private totalUploadTime: number = 0
+
   constructor(driveService: GoogleDriveClientService) {
     this.driveService = driveService
   }
@@ -35,18 +44,20 @@ export class UploadManager {
     sharedDriveId?: string,
   ): Promise<string> {
     const sessionId = generateId()
+    const totalFiles = this.countTotalFiles(files)
+    const totalBytes = this.calculateTotalBytes(files)
+
     const session: UploadSession = {
       id: sessionId,
-      files: [],
-      totalFiles: this.countTotalFiles(files),
+      totalFiles,
       completedFiles: 0,
-      totalBytes: this.calculateTotalBytes(files),
+      totalBytes,
       uploadedBytes: 0,
       status: 'idle',
-      createdAt: Date.now(),
       sharedDriveId,
     }
 
+    this.queueProgress.pending = totalFiles
     this.currentSession = session
     this.fileObjects = fileObjects
     this.queue = this.buildQueue(files, sharedDriveId)
@@ -160,11 +171,11 @@ export class UploadManager {
   /* Process upload queue */
   private async processQueue(): Promise<void> {
     if (!this.currentSession) return
+    const { status } = this.currentSession
+    if (status !== 'uploading' && status !== 'resumed') return
 
     for (const item of this.queue) {
-      if (this.currentSession.status !== 'uploading' && this.currentSession.status !== 'resumed') break
       if (item.status === 'completed') continue
-
       if (item.status === 'pending' || item.status === 'failed') {
         await this.uploadItem(item)
       }
@@ -180,12 +191,13 @@ export class UploadManager {
     if (!this.currentSession) return
 
     item.status = 'uploading'
-    item.startTime = Date.now()
+    this.currentFile = item
+    this.queueProgress.pending--
+    this.queueProgress.uploading++
     this.updateProgress()
 
     try {
-      if (item.file.isDirectory) {
-        // Create folder
+      if (item.file.isDirectory) { // Create folder
         const folderId = await this.driveService.createFolder(
           item.file.name,
           item.parentId,
@@ -195,18 +207,26 @@ export class UploadManager {
         // Update parent ID for all children that reference this folder's queue ID
         this.updateChildrenParentId(item.id, folderId)
         item.status = 'completed'
-      } else {
-        // Upload file
+
+        this.currentFile = null
+        this.queueProgress.uploading--
+        this.queueProgress.completed++
+      } else { // Upload file
         const file = this.fileObjects.get(item.file.name) || null
         if (!file) {
           throw new Error(`File not found: ${item.file.name}`)
         }
-
+        const startTime = Date.now()
         await this.uploadFileWithProgress(file, item)
         item.status = 'completed'
+        const endTime = Date.now()
+
+        this.currentFile = null
+        this.queueProgress.uploading--
+        this.queueProgress.completed++
+        this.totalUploadTime += endTime - startTime
       }
 
-      item.endTime = Date.now()
       this.currentSession.completedFiles++
       this.currentSession.uploadedBytes += item.totalBytes
 
@@ -220,29 +240,20 @@ export class UploadManager {
   /* Update progress and trigger callback */
   private updateProgress(): void {
     if (!this.currentSession || !this.onProgress) return
-
-    // Calculate queue progress
-    const queueProgress = {
-      pending: this.queue.filter((item) => item.status === 'pending').length,
-      uploading: this.queue.filter((item) => item.status === 'uploading').length,
-      completed: this.queue.filter((item) => item.status === 'completed').length,
-      failed: this.queue.filter((item) => item.status === 'failed').length,
-    }
-
-    const currentFile = this.queue.find((item) => item.status === 'uploading')
+    const { totalFiles, completedFiles, totalBytes, uploadedBytes } = this.currentSession
 
     const stats: UploadStats = {
-      totalFiles: this.currentSession.totalFiles,
-      completedFiles: this.currentSession.completedFiles,
-      totalBytes: this.currentSession.totalBytes,
-      uploadedBytes: this.currentSession.uploadedBytes,
+      totalFiles,
+      completedFiles,
+      totalBytes,
+      uploadedBytes,
       averageSpeed: this.calculateAverageSpeed(),
       estimatedTimeRemaining: this.calculateEstimatedTimeRemaining(),
-      currentFile: currentFile ? {
-        name: currentFile.file.name,
-        totalBytes: currentFile.totalBytes,
+      currentFile: this.currentFile ? {
+        name: this.currentFile.file.name,
+        totalBytes: this.currentFile.totalBytes,
       } : undefined,
-      queueProgress,
+      queueProgress: this.queueProgress,
     }
 
     this.onProgress(stats)
@@ -287,22 +298,7 @@ export class UploadManager {
 
   /* Calculate average upload speed */
   private calculateAverageSpeed(): number {
-    const completedItems = this.queue.filter(
-      (item) => item.status === 'completed' && item.startTime && item.endTime
-    )
-
-    if (completedItems.length === 0) return 0
-
-    const totalTime = completedItems.reduce((sum, item) => {
-      return sum + (item.endTime! - item.startTime!)
-    }, 0)
-
-    const totalBytes = completedItems.reduce(
-      (sum, item) => sum + item.totalBytes,
-      0
-    )
-
-    return totalTime > 0 ? (totalBytes / totalTime) * 1000 : 0 // bytes per second
+    return this.totalUploadTime > 0 ? (this.currentSession!.uploadedBytes / this.totalUploadTime) * 1000 : 0 // bytes per second
   }
 
   /* Calculate estimated time remaining */
@@ -319,5 +315,8 @@ export class UploadManager {
   clearCache(): void {
     this.currentSession = null
     this.queue = []
+    this.queueProgress = { pending: 0, uploading: 0, completed: 0, failed: 0 }
+    this.currentFile = null
+    this.totalUploadTime = 0
   }
 }
