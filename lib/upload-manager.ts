@@ -172,18 +172,38 @@ export class UploadManager {
   private async processQueue(): Promise<void> {
     if (!this.currentSession) return
 
-    for (const item of this.queue) {
+    const pendingItems = this.queue.filter(
+      item => item.status === 'pending' || item.status === 'failed'
+    )
+
+    // Process items in parallel (3 at a time for optimal speed)
+    const maxConcurrent = 3
+    const chunks = this.chunkArray(pendingItems, maxConcurrent)
+    
+    for (const chunk of chunks) {
       const { status } = this.currentSession
       if (status !== 'uploading' && status !== 'resumed') break
-      if (item.status === 'completed') continue
-      if (item.status === 'pending' || item.status === 'failed') {
-        await this.uploadItem(item)
-      }
+      
+      // Upload multiple files simultaneously
+      const startTime = Date.now()
+      const uploadPromises = chunk.map(item => this.uploadItem(item))
+      await Promise.allSettled(uploadPromises)
+      this.totalUploadTime += Date.now() - startTime
+      this.updateProgress()
     }
 
     if (this.currentSession.completedFiles === this.currentSession.totalFiles) {
       this.currentSession.status = 'completed'
     }
+  }
+
+  /* Helper method to split array into chunks */
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = []
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size))
+    }
+    return chunks
   }
 
   /* Upload individual item */
@@ -216,15 +236,12 @@ export class UploadManager {
         if (!file) {
           throw new Error(`File not found: ${item.file.name}`)
         }
-        const startTime = Date.now()
         await this.uploadFileWithProgress(file, item)
         item.status = 'completed'
-        const endTime = Date.now()
 
         this.currentFile = null
         this.queueProgress.uploading--
         this.queueProgress.completed++
-        this.totalUploadTime += endTime - startTime
       }
 
       this.currentSession.completedFiles++
